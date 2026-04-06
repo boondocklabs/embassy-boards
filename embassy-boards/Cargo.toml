@@ -1,5 +1,5 @@
 [package]
-name = "boards"
+name = "embassy-boards"
 version = "0.1.0"
 edition = "2024"
 
@@ -64,9 +64,10 @@ static_cell = "2.1"
 panic-probe = { version = "1.0.0", features = ["print-defmt"], optional = true }
 defmt = { version = "1.0.1", optional = true }
 rtt-target = { version = "0.6.2", features = ["defmt"], optional = true }
-embassy-stm32 = { path = "../embassy/embassy-stm32", optional = true }
-embassy-executor = { path = "../embassy/embassy-executor", features = ["executor-thread", "executor-interrupt"], optional = true }
-embassy-time = { path = "../embassy/embassy-time" }
+embassy-stm32 = { path = "../../embassy/embassy-stm32", optional = true }
+embassy-executor = { path = "../../embassy/embassy-executor", features = ["executor-thread", "executor-interrupt"], optional = true }
+embassy-time = { path = "../../embassy/embassy-time" }
+embassy-sync = { path = "../../embassy/embassy-sync" }
 stm32-fmc = "0.4.0"
 embedded-hal-async = "1.0.0"
 embedded-hal = "1.0.0"
@@ -77,9 +78,10 @@ embedded-graphics = { version = "0.8.2", optional = true}
 ratatui = { version = "0.30", default-features = false, features = ["portable-atomic", "async-backend"], optional = true }
 embedded-graphics-unicodefonts = { version = "0.2.0", optional = true }
 hashbrown = { version = "0.16.1", default-features = false }
+tracing = { version = "0.1.44", default-features = false }
 
 
 [patch.crates-io]
-ratatui.path = "../ratatui/ratatui"
-ratatui-core.path = "../ratatui/ratatui-core"
-ratatui-widgets.path = "../ratatui/ratatui-widgets"
+ratatui.path = "../../ratatui/ratatui"
+ratatui-core.path = "../../ratatui/ratatui-core"
+ratatui-widgets.path = "../../ratatui/ratatui-widgets"

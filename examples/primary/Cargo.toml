@@ -4,18 +4,19 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-boards = { path = "../../boards", default-features = false, features = ["stm32h747i-disco-cm7", "defmt"] }
+embassy-boards = { path = "../../embassy-boards", default-features = false, features = ["stm32h747i-disco-cm7", "defmt"] }
 defmt = "1.0.1"
-embassy-executor = { path = "../../embassy/embassy-executor" }
+embassy-executor = { path = "../../../embassy/embassy-executor" }
+tracing = { version = "0.1.44", default-features = false }
 
 
 [build-dependencies]
-boards = { path = "../../boards", default-features = false, features = ["board-stm32h747i-disco", "cpu0", "_build"] }
+embassy-boards = { path = "../../embassy-boards", default-features = false, features = ["board-stm32h747i-disco", "cpu0", "_build"] }
 
 [patch.crates-io]
-ratatui.path = "../../ratatui/ratatui"
-ratatui-core.path = "../../ratatui/ratatui-core"
-ratatui-widgets.path = "../../ratatui/ratatui-widgets"
+ratatui.path = "../../../ratatui/ratatui"
+ratatui-core.path = "../../../ratatui/ratatui-core"
+ratatui-widgets.path = "../../../ratatui/ratatui-widgets"
 
 [profile.release]
 debug = 2

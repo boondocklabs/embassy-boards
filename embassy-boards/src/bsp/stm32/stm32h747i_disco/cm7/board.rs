@@ -342,8 +342,8 @@ impl BoardConfig for Board {
         let backend = RenderServer::new(
             dma2d,
             ltdc,
-            buffers.fb1.as_buffer2d(PixelFormat::Argb8888),
             buffers.fb0.as_buffer2d(PixelFormat::Argb8888),
+            buffers.fb1.as_buffer2d(PixelFormat::Argb8888),
             buffers.font_texture,
         )
         .await;

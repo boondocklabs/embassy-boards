@@ -1,6 +1,6 @@
-use boards::bsp::Board;
-use boards::memory::BoardMemory;
-use boards::memory::generate_memory_linker;
+use embassy_boards::bsp::Board;
+use embassy_boards::memory::BoardMemory;
+use embassy_boards::memory::generate_memory_linker;
 use std::{env, fs, path::PathBuf};
 
 fn main() {

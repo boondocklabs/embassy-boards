@@ -48,12 +48,12 @@ impl RenderServer {
         font_texture: Texture,
     ) -> Self {
         dma2d
-            .fill(&bg.region(0, 0, fg.width, fg.height), 0)
+            .fill(&bg.region(0, 0, bg.width, bg.height), 0x70000ff0)
             .await
             .unwrap();
 
         dma2d
-            .fill(&fg.region(0, 0, fg.width, fg.height), 0x700000ff)
+            .fill(&fg.region(0, 0, fg.width, fg.height), 0x0)
             .await
             .unwrap();
 
