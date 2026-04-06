@@ -1,0 +1,85 @@
+[package]
+name = "boards"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = [ "stm32h747i-disco-cm7" ]
+
+# Build flag is used for inclusion in build-dependencies
+# for generating memory linker scripts in build.rs
+_build = []
+
+_runtime = [
+    "dep:embassy-executor",
+    "dep:rtt-target",
+    "dep:panic-probe",
+]
+
+board-stm32h747i-disco = [ "_stm32" ]
+cpu0 = []
+cpu1 = []
+runtime-stm32 = [
+    "_stm32",
+    "_runtime",
+    "alloc",
+    "dep:embassy-stm32",
+    "dep:embedded-graphics",
+    "dep:cortex-m",
+    "dep:cortex-m-rt",
+    "embassy-stm32/defmt",
+    "embassy-stm32/exti",
+    "embassy-executor/platform-cortex-m"
+]
+stm32h747i-disco-cm7 = [
+    "cpu0",
+    "runtime-stm32",
+    "display",
+    "touch",
+    "terminal",
+    "board-stm32h747i-disco",
+    "embassy-stm32/stm32h747xi-cm7",
+    "embassy-stm32/time-driver-tim1"
+]
+stm32h747i-disco-cm4 = [
+    "cpu1",
+    "runtime-stm32",
+    "board-stm32h747i-disco",
+    "embassy-stm32/stm32h747xi-cm4",
+    "embassy-stm32/time-driver-tim2"
+]
+
+defmt = [ "dep:defmt", "panic-probe/defmt", "embassy-stm32/defmt", "embassy-executor/defmt", "embassy-time/defmt" ]
+alloc = [ "dep:embedded-alloc" ]
+display = [ "dep:embedded-graphics" ]
+terminal = [ "dep:embedded-graphics-unicodefonts", "dep:ratatui" ]
+touch = []
+_stm32 = []
+embedded-alloc = ["dep:embedded-alloc"]
+
+[dependencies]
+cortex-m = { version = "0.7.7", features = ["inline-asm", "critical-section-single-core"], optional = true }
+cortex-m-rt = { version = "0.7.5", optional = true }
+static_cell = "2.1"
+panic-probe = { version = "1.0.0", features = ["print-defmt"], optional = true }
+defmt = { version = "1.0.1", optional = true }
+rtt-target = { version = "0.6.2", features = ["defmt"], optional = true }
+embassy-stm32 = { path = "../embassy/embassy-stm32", optional = true }
+embassy-executor = { path = "../embassy/embassy-executor", features = ["executor-thread", "executor-interrupt"], optional = true }
+embassy-time = { path = "../embassy/embassy-time" }
+stm32-fmc = "0.4.0"
+embedded-hal-async = "1.0.0"
+embedded-hal = "1.0.0"
+
+# Graphics crates
+embedded-alloc = { version = "0.7.0", optional = true }
+embedded-graphics = { version = "0.8.2", optional = true}
+ratatui = { version = "0.30", default-features = false, features = ["portable-atomic", "async-backend"], optional = true }
+embedded-graphics-unicodefonts = { version = "0.2.0", optional = true }
+hashbrown = { version = "0.16.1", default-features = false }
+
+
+[patch.crates-io]
+ratatui.path = "../ratatui/ratatui"
+ratatui-core.path = "../ratatui/ratatui-core"
+ratatui-widgets.path = "../ratatui/ratatui-widgets"

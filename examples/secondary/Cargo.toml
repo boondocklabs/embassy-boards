@@ -1,0 +1,12 @@
+[package]
+name = "secondary"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+boards = { path = "../../boards", default-features = false, features = ["stm32h747i-disco-cm4"] }
+
+[patch.crates-io]
+ratatui.path = "../../ratatui/ratatui"
+ratatui-core.path = "../../ratatui/ratatui-core"
+ratatui-widgets.path = "../../ratatui/ratatui-widgets"
