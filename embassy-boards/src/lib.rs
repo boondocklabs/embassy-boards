@@ -1,4 +1,4 @@
-#![cfg_attr(not(feature = "_build"), no_std)]
+#![cfg_attr(feature = "_runtime", no_std)]
 
 use crate::memory::BoardMemory;
 
@@ -43,7 +43,7 @@ pub use ratatui;
 #[cfg(all(feature = "_runtime", feature = "defmt"))]
 pub use defmt;
 
-#[cfg(all(not(feature = "_build"), feature = "display"))]
+#[cfg(all(feature = "_runtime", feature = "display"))]
 pub mod display;
 
 pub mod memory;

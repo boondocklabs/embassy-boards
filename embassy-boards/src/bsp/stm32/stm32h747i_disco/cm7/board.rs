@@ -19,6 +19,7 @@ use crate::bsp::stm32::runtime::mpu::init_mpu;
 use crate::bsp::stm32::shared_queue::{Receiver, Sender};
 use crate::bsp::stm32::stm32h747i_disco::{Stm32h747iCm7Memory, cm7::display::init_display};
 use crate::drivers::BoardDrivers;
+use crate::drivers::lcd::panel::Panel;
 use crate::drivers::terminal::RenderServer;
 use crate::drivers::touch::Ft5316;
 use crate::memory::BoardMemory;
@@ -117,14 +118,14 @@ static HEAP: Heap = Heap::empty();
 /// SDRAM Buffers
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Buffers {
-    pub fb0: Framebuffer,
-    pub fb1: Framebuffer,
+    pub fb0: Framebuffer<480, 800>,
+    pub fb1: Framebuffer<480, 800>,
     pub font_texture: Texture,
 }
 
 impl<M: 'static> BoardDrivers for Board<M> {
     type Touch = Ft5316<I2c<'static, Async, i2c::Master>, TOUCH_ADDR>;
-    type Terminal = Terminal<RenderServer>;
+    type Terminal = Terminal<RenderServer<ltdc::DSI, 480, 800>>;
     type Sender = Sender<'static, M, 128>;
     type Receiver = Receiver<'static, M, 128>;
 }

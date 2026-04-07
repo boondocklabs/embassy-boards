@@ -6,7 +6,7 @@ use core::convert::Infallible;
 use alloc::vec::Vec;
 use embassy_stm32::{
     dma2d::{self, Buffer2D, ColorConfig, Dma2d},
-    ltdc::{self, Ltdc},
+    ltdc::{Interface, Ltdc},
     peripherals::{DMA2D, LTDC},
 };
 use embedded_graphics::mono_font::MonoFont;
@@ -24,9 +24,9 @@ use crate::display::{
 };
 
 #[allow(unused)]
-pub struct RenderServer {
+pub struct RenderServer<I: Interface, const WIDTH: u16, const HEIGHT: u16> {
     dma2d: Dma2d<'static, DMA2D>,
-    ltdc: Ltdc<'static, LTDC, ltdc::DSI>,
+    ltdc: Ltdc<'static, LTDC, I>,
     cache: FontCache<'static, 2500>,
     font_buffer: Buffer2D,
     fg: Buffer2D,
@@ -39,10 +39,10 @@ pub struct RenderServer {
     size: Size,
 }
 
-impl RenderServer {
+impl<I: Interface, const WIDTH: u16, const HEIGHT: u16> RenderServer<I, WIDTH, HEIGHT> {
     pub async fn new(
         mut dma2d: Dma2d<'static, DMA2D>,
-        ltdc: Ltdc<'static, LTDC, ltdc::DSI>,
+        ltdc: Ltdc<'static, LTDC, I>,
         fg: Buffer2D,
         bg: Buffer2D,
         font_texture: Texture,
@@ -133,12 +133,12 @@ impl RenderServer {
         };
 
         let mut color_config = ColorConfig::default();
-        color_config.pixel_format = dma2d::PixelFormat::A8;
         color_config.alpha_mode = dma2d::AlphaMode::Replace((bg_color >> 24) as u8);
 
         self.dma2d
             .set_color_config(dma2d::BufferKind::Background, &color_config);
 
+        #[cfg(dma2d_v2)]
         self.dma2d
             .blit(
                 &glyph_region,
@@ -148,19 +148,29 @@ impl RenderServer {
             )
             .await
             .unwrap();
+
+        self.dma2d
+            .blit_with(
+                &glyph_region,
+                &self.bg.region(0, 0, WIDTH, HEIGHT),
+                &output_region,
+                Some(fg_color),
+            )
+            .await
+            .unwrap();
     }
 
     pub async fn set_background(&mut self, data: Vec<u8>) {
         let buf = Buffer2D::new(
             data.as_ptr() as *mut u8,
             dma2d::PixelFormat::Argb8888,
-            480,
-            480,
-            800,
+            WIDTH,
+            WIDTH,
+            HEIGHT,
         );
 
-        let input_region = buf.region(0, 0, 480, 800);
-        let output_region = self.bg.region(0, 0, 480, 800);
+        let input_region = buf.region(0, 0, WIDTH, HEIGHT);
+        let output_region = self.bg.region(0, 0, WIDTH, HEIGHT);
 
         let mut fg_color = ColorConfig::default();
         fg_color.pixel_format = dma2d::PixelFormat::Argb8888;
@@ -169,6 +179,7 @@ impl RenderServer {
         self.dma2d
             .set_color_config(dma2d::BufferKind::Foreground, &fg_color);
 
+        #[cfg(dma2d_v2)]
         self.dma2d
             .blit(&input_region, &output_region, None, None)
             .await
@@ -176,12 +187,12 @@ impl RenderServer {
     }
 }
 
-impl Backend for RenderServer {
+impl<I: Interface, const WIDTH: u16, const HEIGHT: u16> Backend for RenderServer<I, WIDTH, HEIGHT> {
     type Error = Infallible;
 
-    async fn draw<'a, I>(&mut self, content: I) -> Result<(), Self::Error>
+    async fn draw<'a, C>(&mut self, content: C) -> Result<(), Self::Error>
     where
-        I: Iterator<Item = (u16, u16, &'a ratatui::buffer::Cell)>,
+        C: Iterator<Item = (u16, u16, &'a ratatui::buffer::Cell)>,
     {
         for (x, y, cell) in content {
             for ch in cell.symbol().chars() {

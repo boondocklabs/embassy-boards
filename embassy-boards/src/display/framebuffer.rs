@@ -3,26 +3,18 @@
 use core::ptr::NonNull;
 #[cfg(feature = "defmt")]
 use defmt::warn;
-use embassy_stm32::{
-    dma2d::{self, Buffer2D},
-    dsihost::panel::DsiPanel,
-};
+use embassy_stm32::dma2d::{self, Buffer2D};
 use embedded_graphics::{pixelcolor::Rgb888, prelude::*};
-
-use super::glass::Glass;
 
 // Framebuffer
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct Framebuffer {
+pub struct Framebuffer<const WIDTH: u16, const HEIGHT: u16> {
     pub ptr: NonNull<u32>,
     pub len: usize,
 }
 
 #[allow(unused)]
-impl Framebuffer {
-    pub const WIDTH: u16 = Glass::ACTIVE_WIDTH;
-    pub const HEIGHT: u16 = Glass::ACTIVE_HEIGHT;
-
+impl<const WIDTH: u16, const HEIGHT: u16> Framebuffer<WIDTH, HEIGHT> {
     pub const unsafe fn new(ptr: *mut u32, len: usize) -> Self {
         Self {
             ptr: unsafe { NonNull::new_unchecked(ptr) },
@@ -53,8 +45,8 @@ impl Framebuffer {
     /// Get a linear index from x,y coordinates
     #[inline]
     fn index_of(x: u16, y: u16) -> Option<usize> {
-        if x < Self::WIDTH && y < Self::HEIGHT {
-            Some(y as usize * Self::WIDTH as usize + x as usize)
+        if x < WIDTH && y < HEIGHT {
+            Some(y as usize * WIDTH as usize + x as usize)
         } else {
             None
         }
@@ -85,26 +77,20 @@ impl Framebuffer {
 
     /// Get a DMA2D Region2D over the whole framebuffer
     pub fn as_buffer2d(&self, format: dma2d::PixelFormat) -> Buffer2D {
-        Buffer2D::new(
-            self.ptr.as_ptr() as _,
-            format,
-            Self::WIDTH as u16,
-            Self::WIDTH as u16,
-            Self::HEIGHT as u16,
-        )
+        Buffer2D::new(self.ptr.as_ptr() as _, format, WIDTH, WIDTH, HEIGHT)
     }
 }
 
-impl OriginDimensions for Framebuffer {
+impl<const WIDTH: u16, const HEIGHT: u16> OriginDimensions for Framebuffer<WIDTH, HEIGHT> {
     fn size(&self) -> Size {
         Size {
-            width: Framebuffer::WIDTH as u32,
-            height: Framebuffer::HEIGHT as u32,
+            width: WIDTH as u32,
+            height: HEIGHT as u32,
         }
     }
 }
 
-impl DrawTarget for Framebuffer {
+impl<const WIDTH: u16, const HEIGHT: u16> DrawTarget for Framebuffer<WIDTH, HEIGHT> {
     type Color = Rgb888;
     type Error = ();
 
@@ -113,7 +99,9 @@ impl DrawTarget for Framebuffer {
         I: IntoIterator<Item = Pixel<Self::Color>>,
     {
         for Pixel(point, color) in pixels {
-            if let Some(index) = Framebuffer::index_of(point.x as u16, point.y as u16) {
+            if let Some(index) =
+                Framebuffer::<WIDTH, HEIGHT>::index_of(point.x as u16, point.y as u16)
+            {
                 self.set(index, color);
             } else {
                 #[cfg(feature = "defmt")]

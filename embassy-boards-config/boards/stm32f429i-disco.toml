@@ -1,0 +1,8 @@
+name = "STM32F429I-DISCO"
+vendor = "ST"
+
+[lcd]
+panel = "ili9341"
+
+[sdram]
+type = "is42s16400j"

@@ -1,0 +1,8 @@
+[target.thumbv7em-none-eabihf]
+runner = 'probe-rs run --chip STM32F429zi --catch-hardfault --always-print-stacktrace'
+
+[build]
+target = "thumbv7em-none-eabihf"
+
+[env]
+DEFMT_LOG = "debug"

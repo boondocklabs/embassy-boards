@@ -1,8 +1,8 @@
 //! LCD Display
 
+#[cfg(feature = "terminal")]
 pub mod fonts;
 pub mod framebuffer;
-pub mod glass;
 pub mod texture;
 
 #[cfg(feature = "terminal")]

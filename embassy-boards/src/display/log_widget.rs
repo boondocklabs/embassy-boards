@@ -3,9 +3,9 @@
 extern crate alloc;
 
 use alloc::vec;
-use alloc::{collections::vec_deque::VecDeque, string::String, sync::Arc, vec::Vec};
+use alloc::{collections::vec_deque::VecDeque, sync::Arc, vec::Vec};
 use embassy_sync::blocking_mutex::{Mutex, raw::CriticalSectionRawMutex};
-use ratatui::style::{Style, Styled};
+use ratatui::style::Style;
 use ratatui::text;
 use ratatui::{
     style::Stylize,

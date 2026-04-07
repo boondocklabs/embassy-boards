@@ -1,3 +1,5 @@
+#![allow(unexpected_cfgs)]
+
 #[cfg(feature = "touch")]
 pub mod touch;
 
@@ -9,6 +11,9 @@ pub mod led;
 
 #[cfg(feature = "pmod")]
 pub mod pmod;
+
+#[cfg(lcd)]
+pub mod lcd;
 
 /// Board driver types
 pub trait BoardDrivers {
@@ -30,6 +35,9 @@ pub trait BoardDrivers {
 
     #[cfg(feature = "pmod")]
     type Pmod;
+
+    //#[cfg(lcd)]
+    //type Lcd;
 
     #[cfg(feature = "dual-core")]
     type Sender;

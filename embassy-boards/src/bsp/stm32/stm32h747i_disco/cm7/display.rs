@@ -9,14 +9,14 @@ use embassy_stm32::{
     peripherals,
 };
 
-use crate::{bsp::stm32::stm32h747i_disco::cm7::board::Buffers, display::glass::Glass};
+use crate::{bsp::stm32::stm32h747i_disco::cm7::board::Buffers, drivers::lcd::panel::Panel};
 
 pub(crate) async fn init_display(
     dsi: &mut DsiHost<'static, peripherals::DSIHOST>,
     ltdc: &mut Ltdc<'static, peripherals::LTDC, DSI>,
     buffers: &Buffers,
 ) {
-    ltdc.init(&Glass::ltdc_config());
+    ltdc.init(&Panel::ltdc_config());
 
     // Disable LTDC while layers are initialized
     ltdc.disable();
@@ -26,9 +26,9 @@ pub(crate) async fn init_display(
         layer: LtdcLayer::Layer1,
         pixel_format: PixelFormat::ARGB8888,
         window_x0: 0,
-        window_x1: Glass::ACTIVE_WIDTH,
+        window_x1: Panel::ACTIVE_WIDTH,
         window_y0: 0,
-        window_y1: Glass::ACTIVE_HEIGHT,
+        window_y1: Panel::ACTIVE_HEIGHT,
     };
     ltdc.init_layer(&layer, None);
 
@@ -37,9 +37,9 @@ pub(crate) async fn init_display(
         layer: LtdcLayer::Layer2,
         pixel_format: PixelFormat::ARGB8888,
         window_x0: 0,
-        window_x1: Glass::ACTIVE_WIDTH,
+        window_x1: Panel::ACTIVE_WIDTH,
         window_y0: 0,
-        window_y1: Glass::ACTIVE_HEIGHT,
+        window_y1: Panel::ACTIVE_HEIGHT,
     };
     ltdc.init_layer(&layer, None);
 
@@ -75,7 +75,7 @@ pub(crate) async fn init_display(
     };
 
     // Start the panel in Adapted Command mode
-    dsi.start_panel::<Glass>(
+    dsi.start_panel::<Panel>(
         &dsi_phy_config,
         &DsiHostMode::AdaptedCommand(command_config),
     )

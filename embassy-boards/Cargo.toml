@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = [ "stm32h747i-disco-cm7" ]
 
 # Build flag is used for inclusion in build-dependencies
 # for generating memory linker scripts in build.rs
@@ -67,6 +66,18 @@ stm32h747i-disco-cm4 = [
     "pmod"
 ]
 
+board-stm32f429i-disco = [ "_stm32" ]
+stm32f429i-disco = [
+    "board-stm32f429i-disco",
+    "runtime-stm32",
+    "display",
+    "led",
+    "defmt",
+    "heap",
+    "embassy-stm32/stm32f429zi",
+    "embassy-stm32/time-driver-tim1"
+]
+
 defmt = [
     "dep:defmt",
     "panic-probe/defmt",
@@ -104,7 +115,6 @@ embedded-hal-async = "1.0.0"
 embedded-hal = "1.0.0"
 embedded-hal-bus = { version = "0.3.0", features = ["async"], optional = true }
 
-
 # Graphics crates
 embedded-alloc = { version = "0.7.0", optional = true }
 embedded-graphics = { version = "0.8.2", optional = true}
@@ -113,6 +123,8 @@ embedded-graphics-unicodefonts = { version = "0.2.0", optional = true }
 hashbrown = { version = "0.16.1", default-features = false }
 tracing = { version = "0.1.44", default-features = false }
 
+[build-dependencies]
+embassy-boards-config.path = "../embassy-boards-config"
 
 [patch.crates-io]
 ratatui.path = "../../ratatui/ratatui"

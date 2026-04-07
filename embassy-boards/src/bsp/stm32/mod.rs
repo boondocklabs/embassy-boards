@@ -16,3 +16,10 @@ pub use stm32h747i_disco::Stm32h747iCm7Memory as Board;
 pub use stm32h747i_disco::cm4::Board as BSP;
 #[cfg(feature = "stm32h747i-disco-cm7")]
 pub use stm32h747i_disco::cm7::Board as BSP;
+
+#[cfg(feature = "board-stm32f429i-disco")]
+mod stm32f429i_disco;
+#[cfg(feature = "stm32f429i-disco")]
+pub use stm32f429i_disco::Board as BSP;
+#[cfg(feature = "board-stm32f429i-disco")]
+pub use stm32f429i_disco::Memory as Board;
