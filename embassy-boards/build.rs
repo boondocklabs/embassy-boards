@@ -1,10 +1,17 @@
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
 use embassy_boards_config::Boards;
 
 fn main() {
     let boards = Boards::load(&PathBuf::from("../embassy-boards-config/boards")).unwrap();
-    let board = boards.board("STM32F429i-DISCO").unwrap();
+    let board = boards
+        .board(
+            &env::var_os("EMBASSY_BOARD")
+                .expect("EMBASSY_BOARD environment not set")
+                .into_string()
+                .unwrap(),
+        )
+        .expect("Board not found");
 
     /*
     let board = boards

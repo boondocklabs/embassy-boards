@@ -5,4 +5,5 @@ runner = 'probe-rs run --chip STM32H747xi --catch-hardfault --always-print-stack
 target = "thumbv7em-none-eabihf"
 
 [env]
+EMBASSY_BOARD = "STM32H747I-DISCO CM7"
 DEFMT_LOG = "debug"

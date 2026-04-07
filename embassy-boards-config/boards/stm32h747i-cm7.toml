@@ -1,5 +1,7 @@
 name = "STM32H747I-DISCO CM7"
 vendor = "ST"
 
+mpu = true
+
 [lcd]
 panel = "nt35510"

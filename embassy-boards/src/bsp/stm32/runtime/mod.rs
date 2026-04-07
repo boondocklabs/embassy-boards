@@ -1,9 +1,12 @@
+#![allow(unexpected_cfgs)]
+
 #[cfg(feature = "dual-core")]
 use core::mem::MaybeUninit;
 #[cfg(feature = "dual-core")]
 use embassy_stm32::SharedData;
 use panic_probe as _;
 
+#[cfg(mpu)]
 pub mod mpu;
 
 #[cfg(feature = "dual-core")]

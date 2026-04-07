@@ -39,6 +39,12 @@ impl Boards {
 pub struct BoardDef {
     pub name: String,
     pub vendor: String,
+
+    /// Set to true if the target has an MPU
+    #[serde(default)]
+    pub mpu: bool,
+
+    /// LCD display definition
     pub lcd: Option<LcdDef>,
 }
 
@@ -47,6 +53,9 @@ impl BoardDef {
         let mut out = String::new();
         out.push_str(&format!("cargo:rustc-cfg=board=\"{}\"\n", self.name));
         out.push_str(&format!("cargo:rustc-cfg=vendor=\"{}\"\n", self.vendor));
+        if self.mpu == true {
+            out.push_str("cargo:rustc-cfg=mpu\n");
+        }
         self.lcd.iter().for_each(|lcd| lcd.cargo_flags(&mut out));
         out
     }
