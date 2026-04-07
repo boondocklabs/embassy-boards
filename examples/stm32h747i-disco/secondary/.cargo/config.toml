@@ -1,0 +1,5 @@
+[target.thumbv7em-none-eabihf]
+runner = './flash-cm4.sh'
+
+[build]
+target = "thumbv7em-none-eabihf"

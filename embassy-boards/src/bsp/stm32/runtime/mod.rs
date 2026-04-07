@@ -8,3 +8,6 @@ pub mod mpu;
 #[unsafe(link_section = ".shared_data")]
 #[unsafe(no_mangle)]
 pub static SHARED_DATA: MaybeUninit<SharedData> = MaybeUninit::uninit();
+
+#[cfg(feature = "dual-core")]
+pub mod dualcore;

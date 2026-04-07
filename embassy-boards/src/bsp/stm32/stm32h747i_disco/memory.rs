@@ -45,9 +45,13 @@ const REGIONS: &[MemoryRegionSpec] = &[
         mpu: None,
         sections: Some(&[
             MemorySectionSpec::new("shared_data", 1024),
-            MemorySectionSpec::new("rtt", 32768),
+            MemorySectionSpec::new("rtt", 8192),
             MemorySectionSpec::new("bdma", 2048)
                 .with_mpu(MpuAttrs::new(0b001, false, false, false, false)),
+            // Section for message queue from CM7 to CM4
+            MemorySectionSpec::new("cm7_to_cm4", 24576),
+            // Section for message queue from CM4 to CM7
+            MemorySectionSpec::new("cm4_to_cm7", 24567),
         ]),
     },
     MemoryRegionSpec {

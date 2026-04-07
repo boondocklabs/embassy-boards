@@ -1,0 +1,16 @@
+[package]
+name = "secondary"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+embassy-boards = { path = "../../../embassy-boards", default-features = false, features = ["stm32h747i-disco-cm4"] }
+embassy-executor = { path = "../../../../embassy/embassy-executor" }
+common.path = "../common"
+
+
+[build-dependencies]
+embassy-boards = { path = "../../../embassy-boards", default-features = false, features = ["board-stm32h747i-disco", "cpu1", "_build"] }
+
+[patch."https://github.com/embassy-rs/stm32-data-generated"]
+stm32-metapac.path = "../../../../stm32-data/build/stm32-metapac"

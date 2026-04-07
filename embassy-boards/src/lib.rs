@@ -22,6 +22,9 @@ pub use cortex_m_rt;
 #[cfg(feature = "_runtime")]
 pub use embassy_time;
 
+#[cfg(feature = "_runtime")]
+pub use embassy_sync;
+
 #[cfg(all(feature = "_runtime", feature = "_stm32"))]
 pub use embassy_stm32;
 
@@ -54,8 +57,24 @@ pub trait BoardConfig {
     /// Devices returned by `init()`
     type Devices;
 
+    /// Inter-core message type for dual-core boards
+    #[cfg(feature = "dual-core")]
+    type Message;
+
     /// Initialize the board
     async fn init() -> Self::Devices;
+
+    #[cfg(feature = "heap")]
+    /// Return an estimate of free heap memory
+    fn heap_free() -> usize;
+
+    #[cfg(feature = "heap")]
+    /// Return an estimate of used heap memory
+    fn heap_used() -> usize;
+
+    #[cfg(feature = "heap")]
+    /// Return the total heap memory size
+    fn heap_size() -> usize;
 }
 
 /// Align to next highest alignment boundary

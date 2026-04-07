@@ -4,6 +4,9 @@ pub mod touch;
 #[cfg(feature = "terminal")]
 pub mod terminal;
 
+#[cfg(feature = "led")]
+pub mod led;
+
 /// Board driver types
 pub trait BoardDrivers {
     /// Touchscreen driver
@@ -12,4 +15,19 @@ pub trait BoardDrivers {
 
     #[cfg(feature = "terminal")]
     type Terminal;
+
+    #[cfg(feature = "led")]
+    type Led;
+
+    #[cfg(feature = "crypto")]
+    type Crypto;
+
+    #[cfg(feature = "hash")]
+    type Hash;
+
+    #[cfg(feature = "dual-core")]
+    type Sender;
+
+    #[cfg(feature = "dual-core")]
+    type Receiver;
 }

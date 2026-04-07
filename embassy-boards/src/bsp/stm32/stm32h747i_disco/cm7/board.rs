@@ -1,6 +1,9 @@
 //! STM32H747I-DISCO CPU0 (Cortex-M7)
 //!
 //! The primary core initializes and provides device handles for:
+//! * 32MB SDRAM
+//! * Graphics framebuffers and texture buffers in SDRAM
+//! * Remaining SDRAM used as heap with write back D-cache
 //! * DSI display
 //! * DMA2D
 //! * Touchscreen
@@ -11,7 +14,9 @@ const TOUCH_ADDR: u8 = 0x38;
 
 extern crate alloc;
 
+use crate::bsp::stm32::runtime::dualcore::Mailbox;
 use crate::bsp::stm32::runtime::mpu::init_mpu;
+use crate::bsp::stm32::shared_queue::{Receiver, Sender};
 use crate::bsp::stm32::stm32h747i_disco::{Stm32h747iCm7Memory, cm7::display::init_display};
 use crate::drivers::BoardDrivers;
 use crate::drivers::terminal::RenderServer;
@@ -23,6 +28,7 @@ use crate::bsp::stm32::runtime::SHARED_DATA;
 use cortex_m::Peripherals;
 use embassy_stm32::exti::ExtiInput;
 use embassy_stm32::gpio::Pull;
+use embassy_stm32::hsem::{HardwareSemaphore, HardwareSemaphoreChannel};
 use embassy_stm32::i2c::I2c;
 use embassy_stm32::{
     Config, bind_interrupts, dma,
@@ -47,28 +53,10 @@ use stm32_fmc::{Sdram, devices::is42s32800g_6::Is42s32800g};
 
 use super::Board;
 use crate::BoardConfig;
+use crate::display::framebuffer::Framebuffer;
+use crate::display::texture::Texture;
 
-pub struct Devices {
-    pub dsi: DsiHost<'static, peripherals::DSIHOST>,
-
-    #[cfg(not(feature = "terminal"))]
-    pub buffers: Buffers,
-
-    #[cfg(not(feature = "terminal"))]
-    pub ltdc: Ltdc<'static, peripherals::LTDC, ltdc::DSI>,
-
-    #[cfg(not(feature = "terminal"))]
-    pub dma2d: Dma2d<'static, peripherals::DMA2D>,
-
-    #[cfg(feature = "terminal")]
-    pub terminal: <Board as BoardDrivers>::Terminal,
-
-    pub sdmmc: Sdmmc<'static>,
-    pub qspi: Qspi<'static, peripherals::QUADSPI, Async>,
-    pub touch: <Board as BoardDrivers>::Touch,
-}
-
-//static SDRAM: StaticCell<&mut [u32]> = StaticCell::new();
+use embedded_alloc::LlffHeap as Heap;
 
 bind_interrupts!(
     struct Irqs {
@@ -95,13 +83,36 @@ bind_interrupts!(
     }
 );
 
-use crate::display::framebuffer::Framebuffer;
-use crate::display::texture::Texture;
+pub struct Devices<M: 'static> {
+    pub dsi: DsiHost<'static, peripherals::DSIHOST>,
 
-use embedded_alloc::TlsfHeap as Heap;
+    #[cfg(not(feature = "terminal"))]
+    pub buffers: Buffers,
+
+    #[cfg(not(feature = "terminal"))]
+    pub ltdc: Ltdc<'static, peripherals::LTDC, ltdc::DSI>,
+
+    #[cfg(not(feature = "terminal"))]
+    pub dma2d: Dma2d<'static, peripherals::DMA2D>,
+
+    #[cfg(feature = "terminal")]
+    pub terminal: <Board<M> as BoardDrivers>::Terminal,
+
+    pub sdmmc: Sdmmc<'static>,
+    pub qspi: Qspi<'static, peripherals::QUADSPI, Async>,
+    pub touch: <Board<M> as BoardDrivers>::Touch,
+
+    _mailbox: Mailbox<M, 128>,
+
+    /// Sender to send messages to secdonary CM4 core
+    pub sender: <Board<M> as BoardDrivers>::Sender,
+
+    /// Receiver to receive messages from secondary CM4 core
+    pub receiver: <Board<M> as BoardDrivers>::Receiver,
+}
 
 #[global_allocator]
-pub static HEAP: Heap = Heap::empty();
+static HEAP: Heap = Heap::empty();
 
 /// SDRAM Buffers
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -111,17 +122,20 @@ pub struct Buffers {
     pub font_texture: Texture,
 }
 
-impl BoardDrivers for Board {
+impl<M: 'static> BoardDrivers for Board<M> {
     type Touch = Ft5316<I2c<'static, Async, i2c::Master>, TOUCH_ADDR>;
     type Terminal = Terminal<RenderServer>;
+    type Sender = Sender<'static, M, 128>;
+    type Receiver = Receiver<'static, M, 128>;
 }
 
-impl BoardConfig for Board {
+impl<M: 'static> BoardConfig for Board<M> {
     const NAME: &str = "STM32H747i-DISCO CPU0 (Cortex-M7)";
     const VENDOR: &str = "ST";
 
-    type Devices = Devices;
+    type Devices = Devices<M>;
     type Layout = Stm32h747iCm7Memory;
+    type Message = M;
 
     async fn init() -> Self::Devices {
         let channels = rtt_init! {
@@ -141,7 +155,7 @@ impl BoardConfig for Board {
         rtt_target::set_defmt_channel(channels.up.0);
 
         let mut cp = Peripherals::take().unwrap();
-        init_mpu::<Board>(&mut cp);
+        init_mpu::<Board<M>>(&mut cp);
 
         // DSI PLL configuration for 500MHz PHY clock.
         // The PLL input is hardwired to HSE, which on the STM32G747i-DISCO is 25MHz
@@ -265,7 +279,7 @@ impl BoardConfig for Board {
             stm32_fmc::devices::is42s32800g_6::Is42s32800g {},
         );
 
-        let buffers = init_memory(sdram);
+        let buffers = init_memory::<M>(sdram);
 
         #[cfg(feature = "defmt")]
         defmt::info!("{}", buffers);
@@ -350,43 +364,79 @@ impl BoardConfig for Board {
 
         let terminal = Terminal::new(backend).unwrap();
 
+        let [hsem1, hsem2, mut hsem3, hsem4, hsem5, hsem6] =
+            HardwareSemaphore::new(p.HSEM, Irqs).split();
+
+        let mailbox = Mailbox::new(true);
+        let sender = unsafe {
+            mailbox
+                .cm7_to_cm4
+                .as_ptr()
+                .as_ref()
+                .expect("CM7 to CM4 mailbox")
+                .sender(hsem1)
+        };
+
+        let receiver = unsafe {
+            mailbox
+                .cm4_to_cm7
+                .as_ptr()
+                .as_ref()
+                .expect("CM4 to CM7 mailbox")
+                .receiver(hsem2)
+        };
+
+        hsem3.blocking_notify();
+
         Devices {
             dsi,
             terminal,
             sdmmc,
             qspi,
             touch,
+            _mailbox: mailbox,
+            sender,
+            receiver,
         }
+    }
+
+    fn heap_free() -> usize {
+        HEAP.free()
+    }
+
+    fn heap_used() -> usize {
+        HEAP.used()
+    }
+
+    fn heap_size() -> usize {
+        <Board<M> as BoardConfig>::Layout::MEMORY
+            .section("SDRAM", "heap")
+            .expect("heap section")
+            .length
     }
 }
 
 /// Initialize memory
-pub fn init_memory(mut sdram: Sdram<Fmc<'_, peripherals::FMC>, Is42s32800g>) -> Buffers {
-    let _sdram_region = <Board as BoardConfig>::Layout::MEMORY
+pub fn init_memory<M: 'static>(
+    mut sdram: Sdram<Fmc<'_, peripherals::FMC>, Is42s32800g>,
+) -> Buffers {
+    let _sdram_region = <Board<M> as BoardConfig>::Layout::MEMORY
         .region("SDRAM")
         .unwrap();
 
-    /*
-    let base = SDRAM.init_with(|| unsafe {
-        let ram_ptr: *mut u32 = sdram.init(&mut Delay) as *mut _;
-        slice::from_raw_parts_mut(ram_ptr, sdram_region.length / size_of::<u32>())
-    });
-    assert!(sdram_region.origin == base.as_ptr() as usize);
-    */
-
     sdram.init(&mut Delay);
 
-    let qspi_region = <Board as BoardConfig>::Layout::MEMORY
+    let qspi_region = <Board<M> as BoardConfig>::Layout::MEMORY
         .region("QSPI")
         .unwrap();
 
     let _qspi_base =
         unsafe { slice::from_raw_parts_mut(qspi_region.origin as *mut u8, qspi_region.length) };
 
-    let fb0_section = <Board as BoardConfig>::Layout::MEMORY
+    let fb0_section = <Board<M> as BoardConfig>::Layout::MEMORY
         .section("SDRAM", "fb0")
         .unwrap();
-    let fb1_section = <Board as BoardConfig>::Layout::MEMORY
+    let fb1_section = <Board<M> as BoardConfig>::Layout::MEMORY
         .section("SDRAM", "fb1")
         .unwrap();
 
@@ -403,14 +453,14 @@ pub fn init_memory(mut sdram: Sdram<Fmc<'_, peripherals::FMC>, Is42s32800g>) -> 
         )
     };
 
-    let tex_section = <Board as BoardConfig>::Layout::MEMORY
+    let tex_section = <Board<M> as BoardConfig>::Layout::MEMORY
         .section("SDRAM", "tex")
         .unwrap();
 
     let font_texture =
         unsafe { Texture::new(tex_section.origin as *mut u8, 1600, 200, PixelFormat::A8) };
 
-    let heap_section = <Board as BoardConfig>::Layout::MEMORY
+    let heap_section = <Board<M> as BoardConfig>::Layout::MEMORY
         .section("SDRAM", "heap")
         .unwrap();
 

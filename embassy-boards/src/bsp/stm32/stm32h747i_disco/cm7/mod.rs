@@ -1,7 +1,11 @@
-#[cfg(not(feature = "_build"))]
+use core::marker::PhantomData;
+
+#[cfg(feature = "_runtime")]
 mod board;
 
-#[cfg(not(feature = "_build"))]
+#[cfg(feature = "_runtime")]
 mod display;
 
-pub struct Board {}
+pub struct Board<M> {
+    _message: PhantomData<M>,
+}

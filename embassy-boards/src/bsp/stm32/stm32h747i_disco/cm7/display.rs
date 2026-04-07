@@ -1,3 +1,5 @@
+//! DSI Display Initialization
+
 use embassy_stm32::{
     dsihost::{
         DsiCommandConfig, DsiHost, DsiHostMode, DsiHostPhyConfig, DsiHostPhyLanes,

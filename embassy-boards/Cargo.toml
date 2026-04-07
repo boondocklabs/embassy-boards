@@ -16,9 +16,16 @@ _runtime = [
     "dep:panic-probe",
 ]
 
-board-stm32h747i-disco = [ "_stm32" ]
+_stm32 = []
+
+# Enabled on dual core targets (CM7)
+dual-core = []
 cpu0 = []
 cpu1 = []
+
+# Enabled if a heap allocator is present
+heap = []
+
 runtime-stm32 = [
     "_stm32",
     "_runtime",
@@ -27,43 +34,65 @@ runtime-stm32 = [
     "dep:embedded-graphics",
     "dep:cortex-m",
     "dep:cortex-m-rt",
-    "embassy-stm32/defmt",
     "embassy-stm32/exti",
     "embassy-executor/platform-cortex-m"
 ]
+
+board-stm32h747i-disco = [ "_stm32" ]
+
+# Primary CM7 core
 stm32h747i-disco-cm7 = [
+    "dual-core",
     "cpu0",
     "runtime-stm32",
     "display",
     "touch",
     "terminal",
+    "defmt",
+    "heap",
     "board-stm32h747i-disco",
     "embassy-stm32/stm32h747xi-cm7",
     "embassy-stm32/time-driver-tim1"
 ]
+
+# Secondary CM4 core
 stm32h747i-disco-cm4 = [
+    "dual-core",
     "cpu1",
     "runtime-stm32",
     "board-stm32h747i-disco",
     "embassy-stm32/stm32h747xi-cm4",
-    "embassy-stm32/time-driver-tim2"
+    "embassy-stm32/time-driver-tim2",
+    "led",
 ]
 
-defmt = [ "dep:defmt", "panic-probe/defmt", "embassy-stm32/defmt", "embassy-executor/defmt", "embassy-time/defmt" ]
+defmt = [
+    "dep:defmt",
+    "panic-probe/defmt",
+    "panic-probe/print-defmt",
+    "rtt-target/defmt",
+    "embassy-stm32/defmt",
+    "embassy-executor/defmt",
+    "embassy-time/defmt"
+]
 alloc = [ "dep:embedded-alloc" ]
+embedded-alloc = ["dep:embedded-alloc"]
+
+# Drivers
+led = []
+touch = []
 display = [ "dep:embedded-graphics" ]
 terminal = [ "dep:embedded-graphics-unicodefonts", "dep:ratatui" ]
-touch = []
-_stm32 = []
-embedded-alloc = ["dep:embedded-alloc"]
+crypto = []
+hash = []
 
 [dependencies]
 cortex-m = { version = "0.7.7", features = ["inline-asm", "critical-section-single-core"], optional = true }
 cortex-m-rt = { version = "0.7.5", optional = true }
 static_cell = "2.1"
-panic-probe = { version = "1.0.0", features = ["print-defmt"], optional = true }
+panic-probe = { version = "1.0.0", default-features = false, optional = true }
 defmt = { version = "1.0.1", optional = true }
-rtt-target = { version = "0.6.2", features = ["defmt"], optional = true }
+rtt-target = { version = "0.6.2", default-features = false, optional = true }
 embassy-stm32 = { path = "../../embassy/embassy-stm32", optional = true }
 embassy-executor = { path = "../../embassy/embassy-executor", features = ["executor-thread", "executor-interrupt"], optional = true }
 embassy-time = { path = "../../embassy/embassy-time" }
