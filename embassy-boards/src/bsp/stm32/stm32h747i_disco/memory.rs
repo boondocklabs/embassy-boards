@@ -6,6 +6,14 @@ use crate::memory::{
 
 const REGIONS: &[MemoryRegionSpec] = &[
     MemoryRegionSpec {
+        name: "ITCM",
+        origin: 0x0000_0000,
+        length: 64 * 1024,
+        kind: RegionKind::Ram,
+        mpu: None,
+        sections: None,
+    },
+    MemoryRegionSpec {
         name: "FLASH_CM7",
         origin: 0x0800_0000,
         length: 1 * 1024 * 1024,
@@ -19,6 +27,14 @@ const REGIONS: &[MemoryRegionSpec] = &[
         length: 1 * 1024 * 1024,
         kind: RegionKind::Flash,
         mpu: None,
+        sections: None,
+    },
+    MemoryRegionSpec {
+        name: "DTCM",
+        origin: 0x2000_0000,
+        length: 128 * 1024,
+        kind: RegionKind::Ram,
+        mpu: Some(MpuAttrs::new(0b001, false, false, false, false)),
         sections: None,
     },
     MemoryRegionSpec {
@@ -38,16 +54,31 @@ const REGIONS: &[MemoryRegionSpec] = &[
         sections: None,
     },
     MemoryRegionSpec {
+        name: "SRAM2",
+        origin: 0x1002_0000,
+        length: 128 * 1024,
+        kind: RegionKind::Ram,
+        mpu: None,
+        sections: None,
+    },
+    MemoryRegionSpec {
+        name: "SRAM3",
+        origin: 0x4000_0000,
+        length: 32 * 1024,
+        kind: RegionKind::Ram,
+        mpu: None,
+        sections: None,
+    },
+    MemoryRegionSpec {
         name: "SRAM4",
         origin: 0x3800_0000,
         length: 64 * 1024,
         kind: RegionKind::Ram,
-        mpu: None,
+        mpu: Some(MpuAttrs::new(0b001, false, false, false, false)),
         sections: Some(&[
             MemorySectionSpec::new("shared_data", 1024),
             MemorySectionSpec::new("rtt", 8192),
-            MemorySectionSpec::new("bdma", 2048)
-                .with_mpu(MpuAttrs::new(0b001, false, false, false, false)),
+            MemorySectionSpec::new("bdma", 2048),
             // Section for message queue from CM7 to CM4
             MemorySectionSpec::new("cm7_to_cm4", 24576),
             // Section for message queue from CM4 to CM7
@@ -93,7 +124,7 @@ impl BoardMemory for super::Stm32h747iCm7Memory {
             },
             MemoryAlias {
                 name: "RAM",
-                target: "AXIRAM",
+                target: "DTCM",
             },
         ],
     };

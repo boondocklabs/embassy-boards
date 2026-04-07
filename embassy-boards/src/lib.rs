@@ -34,6 +34,9 @@ pub mod drivers;
 #[cfg(all(feature = "_runtime", feature = "display"))]
 pub use embedded_graphics;
 
+#[cfg(all(feature = "_runtime", feature = "pmod"))]
+pub use embedded_hal_bus;
+
 #[cfg(all(feature = "_runtime", feature = "terminal"))]
 pub use ratatui;
 

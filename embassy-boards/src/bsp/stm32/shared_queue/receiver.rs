@@ -21,11 +21,7 @@ impl<'a, T, const N: usize> Receiver<'a, T, N> {
 
     pub async fn recv(&mut self) -> Option<T> {
         while self.queue.is_empty() {
-            self.hsem_channel
-                .listen()
-                .with_timeout(Duration::from_millis(100))
-                .await
-                .ok();
+            self.hsem_channel.listen().await;
         }
         self.queue.pop()
     }

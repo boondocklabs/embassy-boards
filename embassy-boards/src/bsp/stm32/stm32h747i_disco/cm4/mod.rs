@@ -1,4 +1,5 @@
-use crate::bsp::stm32::runtime::dualcore::Mailbox;
+use crate::memory::BoardMemory;
+use crate::{bsp::stm32::runtime::dualcore::Mailbox, drivers::pmod::Pmod};
 use core::marker::PhantomData;
 
 use crate::{
@@ -9,24 +10,31 @@ use crate::{
     drivers::{BoardDrivers, led::Led},
 };
 use embassy_stm32::{
-    bind_interrupts, dma, exti,
-    gpio::{Level, Output, Speed},
+    bind_interrupts, dma,
+    exti::{self, ExtiInput},
+    gpio::{Level, Output, Pull, Speed},
     hsem::{self, HardwareSemaphore},
-    interrupt,
-    mode::Async,
-    peripherals,
+    interrupt, peripherals,
+    spi::{self, Spi},
 };
+use embedded_alloc::LlffHeap as Heap;
+use embedded_hal_bus::spi::ExclusiveDevice;
 
 use crate::BoardConfig;
 
 bind_interrupts!(
     struct Irqs {
         HSEM2 => hsem::HardwareSemaphoreInterruptHandler<peripherals::HSEM>;
+        DMA1_STREAM3 => dma::InterruptHandler<peripherals::DMA1_CH3>;
+        DMA1_STREAM4 => dma::InterruptHandler<peripherals::DMA1_CH4>;
         EXTI9_5 => exti::InterruptHandler<interrupt::typelevel::EXTI9_5>;
         EXTI4 => exti::InterruptHandler<interrupt::typelevel::EXTI4>;
         EXTI3 => exti::InterruptHandler<interrupt::typelevel::EXTI3>;
     }
 );
+
+#[global_allocator]
+static HEAP: Heap = Heap::empty();
 
 pub struct Board<M> {
     _message: PhantomData<M>,
@@ -37,6 +45,9 @@ impl<M> Board<M> {}
 /// Devices returned from board init
 pub struct Devices<M: 'static> {
     pub led: <Board<M> as BoardDrivers>::Led,
+
+    #[cfg(feature = "pmod")]
+    pub pmod: <Board<M> as BoardDrivers>::Pmod,
 
     /// Private internal Mailbox for Sender and Receiver
     _mailbox: Mailbox<M, 128>,
@@ -50,6 +61,7 @@ impl<M: 'static> BoardDrivers for Board<M> {
     type Led = Led<4, true>;
     type Sender = Sender<'static, M, 128>;
     type Receiver = Receiver<'static, M, 128>;
+    type Pmod = Pmod;
 }
 
 impl<M: 'static> BoardConfig for Board<M> {
@@ -61,6 +73,15 @@ impl<M: 'static> BoardConfig for Board<M> {
 
     async fn init() -> Devices<M> {
         let p = embassy_stm32::init_secondary(&SHARED_DATA);
+
+        // Initialize heap on SRAM2
+        let heap_region = <Board<M> as BoardConfig>::Layout::MEMORY
+            .region("SRAM2")
+            .unwrap();
+
+        unsafe {
+            HEAP.init(heap_region.origin, heap_region.length);
+        }
 
         let led1 = Output::new(p.PI12, Level::High, Speed::High);
         let led2 = Output::new(p.PI13, Level::High, Speed::High);
@@ -96,8 +117,41 @@ impl<M: 'static> BoardConfig for Board<M> {
                 .receiver(hsem1)
         };
 
+        #[cfg(feature = "pmod")]
+        let pmod = {
+            use embassy_stm32::time::Hertz;
+            use embassy_time::Delay;
+
+            // TODO: This should be configurable by a caller
+            let mut spi_config = spi::Config::default();
+            spi_config.frequency = Hertz::mhz(10);
+            spi_config.gpio_speed = embassy_stm32::gpio::Speed::Low;
+            spi_config.mode = spi::MODE_0;
+            spi_config.nss_output_disable = true;
+            spi_config.bit_order = spi::BitOrder::MsbFirst;
+
+            let pmod_spi = Spi::new(
+                p.SPI2, p.PA12, p.PC3, p.PC2, p.DMA1_CH3, p.DMA1_CH4, Irqs, spi_config,
+            );
+
+            let pmod_int = ExtiInput::new(p.PC6, p.EXTI6, Pull::None, Irqs);
+            let pmod_cs = Output::new(
+                p.PA11,
+                embassy_stm32::gpio::Level::High,
+                embassy_stm32::gpio::Speed::High,
+            );
+            let pmod_reset = Output::new(
+                p.PJ13,
+                embassy_stm32::gpio::Level::Low,
+                embassy_stm32::gpio::Speed::Low,
+            );
+            let bus = ExclusiveDevice::new(pmod_spi, pmod_cs, Delay).unwrap();
+            Pmod::new(bus, pmod_int, pmod_reset)
+        };
+
         Devices {
             led,
+            pmod,
             _mailbox: mailbox,
             sender,
             receiver,

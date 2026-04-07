@@ -7,6 +7,9 @@ pub mod terminal;
 #[cfg(feature = "led")]
 pub mod led;
 
+#[cfg(feature = "pmod")]
+pub mod pmod;
+
 /// Board driver types
 pub trait BoardDrivers {
     /// Touchscreen driver
@@ -24,6 +27,9 @@ pub trait BoardDrivers {
 
     #[cfg(feature = "hash")]
     type Hash;
+
+    #[cfg(feature = "pmod")]
+    type Pmod;
 
     #[cfg(feature = "dual-core")]
     type Sender;
