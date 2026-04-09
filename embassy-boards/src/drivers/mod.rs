@@ -44,4 +44,7 @@ pub trait BoardDrivers {
 
     #[cfg(feature = "dual-core")]
     type Receiver;
+
+    #[cfg(feature = "net")]
+    type Network;
 }

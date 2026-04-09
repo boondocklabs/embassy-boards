@@ -1,5 +1,55 @@
+id = "stm32f429i-disco"
 name = "STM32F429I-DISCO"
 vendor = "ST"
+platform = "stm32"
+chip = "STM32F429ZI"
+target = "thumbv7em-none-eabihf"
+features = []
+
+[memory]
+[[memory.regions]]
+name = "CCM"
+origin = "0x1000_0000"
+length = "64KiB"
+kind = "ram"
+
+[[memory.regions]]
+name = "FLASH"
+origin = "0x0800_0000"
+length = "1MiB"
+kind = "flash"
+
+[[memory.regions]]
+name = "SRAM"
+origin = "0x2000_0000"
+length = "192KiB"
+kind = "ram"
+
+[[memory.regions]]
+name = "SDRAM"
+origin = "0xD000_0000"
+length = "8MiB"
+kind = "external_ram"
+
+[[memory.regions.sections]]
+name = "fb0"
+length = "512KiB"
+
+[[memory.regions.sections]]
+name = "fb1"
+length = "512KiB"
+
+[[memory.regions.sections]]
+name = "tex"
+length = "1MiB"
+
+[[memory.regions.sections]]
+name = "heap"
+length = "6MiB"
+
+[[memory.aliases]]
+name = "RAM"
+target = "SRAM"
 
 [lcd]
 panel = "ili9341"

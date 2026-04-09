@@ -4,6 +4,7 @@ third_party
 webroot
 /Cargo.toml
 out/
+.env
 # editor artifacts
 .zed
 .neoconf.json

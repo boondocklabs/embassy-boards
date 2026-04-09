@@ -1,4 +1,13 @@
-//! Ratatui tracing log widget
+//! Ratatui widget for `tracing`
+//!
+//! Implements `tracing::Subscriber` which can be registered as the global default
+//! The widget can be rendered in the Ratatui loop and will display tracing events
+//!
+//! ```rust
+//! let logs = LogWidget::default();
+//! tracing::subscriber::set_global_default(logs.clone()).unwrap();
+//! ```
+//!
 
 extern crate alloc;
 
@@ -121,21 +130,17 @@ impl Visit for Visitor {
 }
 
 impl Subscriber for LogWidget {
-    fn enabled(&self, metadata: &tracing::Metadata<'_>) -> bool {
+    fn enabled(&self, _metadata: &tracing::Metadata<'_>) -> bool {
         true
     }
 
-    fn new_span(&self, span: &tracing::span::Attributes<'_>) -> tracing::span::Id {
+    fn new_span(&self, _span: &tracing::span::Attributes<'_>) -> tracing::span::Id {
         tracing::span::Id::from_u64(1)
     }
 
-    fn record(&self, span: &tracing::span::Id, values: &tracing::span::Record<'_>) {
-        defmt::info!("record");
-    }
+    fn record(&self, _span: &tracing::span::Id, _values: &tracing::span::Record<'_>) {}
 
-    fn record_follows_from(&self, span: &tracing::span::Id, follows: &tracing::span::Id) {
-        defmt::info!("record_follows_from");
-    }
+    fn record_follows_from(&self, _span: &tracing::span::Id, _follows: &tracing::span::Id) {}
 
     fn event(&self, event: &tracing::Event<'_>) {
         let meta = event.metadata();
@@ -152,11 +157,7 @@ impl Subscriber for LogWidget {
         }
     }
 
-    fn enter(&self, span: &tracing::span::Id) {
-        defmt::info!("enter span");
-    }
+    fn enter(&self, _span: &tracing::span::Id) {}
 
-    fn exit(&self, span: &tracing::span::Id) {
-        defmt::info!("exit span");
-    }
+    fn exit(&self, _span: &tracing::span::Id) {}
 }

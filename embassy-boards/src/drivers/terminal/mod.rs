@@ -160,7 +160,12 @@ impl<I: Interface, const WIDTH: u16, const HEIGHT: u16> RenderServer<I, WIDTH, H
             .unwrap();
     }
 
+    /// Set a background image in the background buffer.
+    /// The background is alpha blended on the bottom layer using LTDC
     pub async fn set_background(&mut self, data: Vec<u8>) {
+        // TODO: feature gating on DMA2D IP version,
+        // as earlier variants can't use a FG/BG color register
+
         let buf = Buffer2D::new(
             data.as_ptr() as *mut u8,
             dma2d::PixelFormat::Argb8888,
@@ -169,8 +174,8 @@ impl<I: Interface, const WIDTH: u16, const HEIGHT: u16> RenderServer<I, WIDTH, H
             HEIGHT,
         );
 
-        let input_region = buf.region(0, 0, WIDTH, HEIGHT);
-        let output_region = self.bg.region(0, 0, WIDTH, HEIGHT);
+        let _input_region = buf.region(0, 0, WIDTH, HEIGHT);
+        let _output_region = self.bg.region(0, 0, WIDTH, HEIGHT);
 
         let mut fg_color = ColorConfig::default();
         fg_color.pixel_format = dma2d::PixelFormat::Argb8888;
@@ -244,31 +249,6 @@ impl<I: Interface, const WIDTH: u16, const HEIGHT: u16> Backend for RenderServer
     }
 
     async fn flush(&mut self) -> Result<(), Self::Error> {
-        /*
-        self.frame_count += 1;
-
-        self.ltdc
-            .set_buffer(
-                embassy_stm32::ltdc::LtdcLayer::Layer1,
-                self.active_fb().ptr.as_ptr() as *const _,
-            )
-            .await
-            .unwrap();
-
-        self.dma2d
-            .copy(self.active_fb(), self.back_fb())
-            .await
-            .unwrap();
-
-        self.ltdc
-            .set_buffer(
-                embassy_stm32::ltdc::LtdcLayer::Layer1,
-                self.active_fb().ptr.as_ptr() as *const _,
-            )
-            .await
-            .unwrap();
-            */
-
         Ok(())
     }
 }

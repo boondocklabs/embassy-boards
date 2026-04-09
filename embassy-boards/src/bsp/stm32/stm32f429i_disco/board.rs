@@ -2,36 +2,51 @@
 
 #[cfg(feature = "terminal")]
 use crate::drivers::terminal::RenderServer;
-use crate::memory::BoardMemory;
 use defmt::error;
+use embassy_boards_core::memory::BoardMemory;
+#[cfg(feature = "esp-hosted")]
+use embassy_executor::Spawner;
+#[cfg(feature = "esp-hosted")]
+use embassy_net_esp_hosted::SpiInterface;
 use embassy_stm32::Config;
 use embassy_stm32::bind_interrupts;
+use embassy_stm32::dma;
 use embassy_stm32::dma2d;
 use embassy_stm32::dma2d::Buffer2D;
 use embassy_stm32::dma2d::Dma2d;
-use embassy_stm32::dma2d::PixelFormat;
+use embassy_stm32::exti;
+use embassy_stm32::exti::ExtiInput;
 use embassy_stm32::fmc::Fmc;
 use embassy_stm32::gpio::Level;
 use embassy_stm32::gpio::Output;
+use embassy_stm32::gpio::Pull;
 use embassy_stm32::gpio::Speed;
+use embassy_stm32::interrupt;
 use embassy_stm32::ltdc;
 use embassy_stm32::ltdc::Ltdc;
 use embassy_stm32::ltdc::LtdcConfiguration;
 use embassy_stm32::ltdc::LtdcLayer;
 use embassy_stm32::ltdc::LtdcLayerConfig;
+#[cfg(feature = "esp-hosted")]
+use embassy_stm32::mode::Async;
 use embassy_stm32::peripherals;
 use embassy_stm32::spi;
+use embassy_stm32::spi::Spi;
 use embassy_stm32::time::Hertz;
 use embassy_time::Delay;
 #[cfg(feature = "terminal")]
 use ratatui::Terminal;
 use rtt_target::rtt_init;
+#[cfg(feature = "esp-hosted")]
+use static_cell::StaticCell;
 
 use super::Board;
-use super::Memory;
 
+#[cfg(feature = "terminal")]
 use crate::display::texture::Texture;
+#[cfg(lcd)]
 use crate::drivers::lcd::panel::Panel;
+#[cfg(lcd)]
 use crate::drivers::lcd::panel::SpiPanel;
 use crate::drivers::led::Led;
 use crate::{BoardConfig, drivers::BoardDrivers};
@@ -46,6 +61,14 @@ bind_interrupts!(
     struct Irqs {
         LTDC => ltdc::InterruptHandler<peripherals::LTDC>;
         DMA2D => dma2d::InterruptHandler<peripherals::DMA2D>;
+        DMA1_STREAM4 => dma::InterruptHandler<peripherals::DMA1_CH4>;
+        DMA1_STREAM5 => dma::InterruptHandler<peripherals::DMA1_CH5>;
+        DMA2_STREAM4 => dma::InterruptHandler<peripherals::DMA2_CH4>;
+        DMA2_STREAM5 => dma::InterruptHandler<peripherals::DMA2_CH5>;
+        EXTI1 => exti::InterruptHandler<interrupt::typelevel::EXTI1>;
+        EXTI2 => exti::InterruptHandler<interrupt::typelevel::EXTI2>;
+        EXTI3 => exti::InterruptHandler<interrupt::typelevel::EXTI3>;
+        EXTI4 => exti::InterruptHandler<interrupt::typelevel::EXTI4>;
     }
 );
 
@@ -59,24 +82,103 @@ static mut FB0: [u32; PIXELS] = [0; PIXELS];
 #[unsafe(link_section = ".fb1")]
 static mut FB1: [u32; PIXELS] = [0; PIXELS];
 
+#[cfg(feature = "esp-hosted")]
+static ESP_STATE: StaticCell<embassy_net_esp_hosted::State> = StaticCell::new();
+
 /// Board driver types
 impl BoardDrivers for Board {
-    type Led = Led<2, false>;
+    type Led = Led<Output<'static>, 2, false>;
     #[cfg(feature = "terminal")]
     type Terminal = Terminal<RenderServer<ltdc::Rgb666, WIDTH, HEIGHT>>;
+    #[cfg(feature = "esp-hosted")]
+    type Network = Network;
+}
+
+#[cfg(feature = "esp-hosted")]
+pub struct Network {
+    pub device: embassy_net_esp_hosted::NetDriver<'static>,
+    pub control: embassy_net_esp_hosted::Control<'static>,
+    pub runner: embassy_net_esp_hosted::Runner<
+        'static,
+        SpiInterface<
+            embedded_hal_bus::spi::ExclusiveDevice<
+                Spi<'static, Async, spi::mode::Master>,
+                Output<'static>,
+                Delay,
+            >,
+            ExtiInput<'static, Async>,
+        >,
+        Output<'static>,
+    >,
+}
+
+#[cfg(feature = "esp-hosted")]
+impl Network {
+    pub async fn start(self, spawner: Spawner) {
+        spawner.spawn(net_runner_task(self.runner).unwrap());
+        spawner.spawn(net_task(self.control).unwrap());
+    }
+}
+
+#[cfg(feature = "esp-hosted")]
+#[embassy_executor::task]
+async fn net_task(mut control: embassy_net_esp_hosted::Control<'static>) {
+    use embassy_time::Timer;
+
+    #[cfg(feature = "defmt")]
+    defmt::info!("Initializing esp-hosted");
+    control.init().await.unwrap();
+    defmt::info!("Initialized");
+
+    loop {
+        defmt::info!("Connecting");
+        control.connect("foo", "foo").await.unwrap();
+        defmt::info!("Connected");
+        match control.get_status().await {
+            Ok(status) => defmt::info!("{}", status),
+            Err(e) => defmt::error!("{}", e),
+        }
+
+        Timer::after_secs(1).await;
+    }
+}
+
+#[cfg(feature = "esp-hosted")]
+#[embassy_executor::task]
+async fn net_runner_task(
+    runner: embassy_net_esp_hosted::Runner<
+        'static,
+        SpiInterface<
+            embedded_hal_bus::spi::ExclusiveDevice<
+                Spi<'static, Async, spi::mode::Master>,
+                Output<'static>,
+                Delay,
+            >,
+            ExtiInput<'static, Async>,
+        >,
+        Output<'static>,
+    >,
+) {
+    defmt::info!("Network Runner task started");
+    runner.run().await;
 }
 
 pub struct Devices {
     pub led: <Board as BoardDrivers>::Led,
     #[cfg(feature = "terminal")]
     pub terminal: <Board as BoardDrivers>::Terminal,
+    #[cfg(feature = "esp-hosted")]
+    pub network: Network,
+
+    pub gyro_cs: Output<'static>,
+    pub lcd_cs: Output<'static>,
 }
 
 impl BoardConfig for Board {
     const NAME: &str = "STM32F429I-DISCO";
     const VENDOR: &str = "ST";
 
-    type Layout = Memory;
+    type Layout = crate::Memory;
     type Devices = Devices;
 
     async fn init() -> Self::Devices {
@@ -198,20 +300,47 @@ impl BoardConfig for Board {
 
         let led = Led { pins: [led1, led2] };
 
-        let mut lcd_cs = Output::new(p.PC2, Level::High, Speed::VeryHigh);
-        let mut lcd_dc = Output::new(p.PD13, Level::High, Speed::VeryHigh);
+        // L3GD20 gyro pins
+        let gyro_cs = Output::new(p.PC1, Level::High, Speed::High);
+        let _gyro_int1 = ExtiInput::new(p.PA1, p.EXTI1, Pull::None, Irqs);
+        let _gyro_int2 = ExtiInput::new(p.PA2, p.EXTI2, Pull::None, Irqs);
+
+        let mut lcd_cs = Output::new(p.PC2, Level::High, Speed::High);
+        let mut lcd_dc = Output::new(p.PD13, Level::High, Speed::High);
 
         let mut spi_cfg = spi::Config::default();
         spi_cfg.frequency = Hertz(10_000_000);
         spi_cfg.mode = spi::MODE_0;
 
-        let mut lcd_spi = spi::Spi::new_blocking_txonly(
-            p.SPI5, p.PF7, // SCK
-            p.PF9, // MOSI
-            spi_cfg,
+        let mut spi5 = Spi::new(
+            p.SPI5, p.PF7, p.PF9, p.PF8, p.DMA2_CH4, p.DMA2_CH5, Irqs, spi_cfg,
         );
 
-        Panel::init(&mut lcd_spi, &mut lcd_cs, &mut lcd_dc).await;
+        #[cfg(lcd)]
+        Panel::init(&mut spi5, &mut lcd_cs, &mut lcd_dc).await;
+
+        // Deassert LCD chip select
+        lcd_cs.set_high();
+
+        let mut spi_cfg = spi::Config::default();
+        spi_cfg.frequency = Hertz(10_000_000);
+        spi_cfg.mode = spi::MODE_2;
+        spi5.set_config(&spi_cfg).unwrap();
+
+        #[cfg(feature = "esp-hosted")]
+        let (device, control, runner) = {
+            let esp_handshake = ExtiInput::new(p.PE3, p.EXTI3, Pull::Down, Irqs);
+            let esp_ready = ExtiInput::new(p.PE4, p.EXTI4, Pull::Down, Irqs);
+            let esp_cs = Output::new(p.PE5, Level::High, Speed::VeryHigh);
+            let esp_reset = Output::new(p.PE6, Level::High, Speed::Low);
+
+            let esp_spi = embedded_hal_bus::spi::ExclusiveDevice::new(spi5, esp_cs, Delay).unwrap();
+
+            let state = ESP_STATE.init_with(|| embassy_net_esp_hosted::State::new());
+            let interface =
+                embassy_net_esp_hosted::SpiInterface::new(esp_spi, esp_handshake, esp_ready);
+            embassy_net_esp_hosted::new(state, interface, esp_reset).await
+        };
 
         let b2 = p.PD6;
         let b3 = p.PG11;
@@ -334,8 +463,14 @@ impl BoardConfig for Board {
                 .section("SDRAM", "tex")
                 .unwrap();
 
-            let font_texture =
-                unsafe { Texture::new(tex_section.origin as *mut u8, 1600, 200, PixelFormat::A8) };
+            let font_texture = unsafe {
+                Texture::new(
+                    tex_section.origin as *mut u8,
+                    1600,
+                    200,
+                    dma2d::PixelFormat::A8,
+                )
+            };
 
             let backend = RenderServer::<ltdc::Rgb666, WIDTH, HEIGHT>::new(
                 dma2d,
@@ -352,6 +487,14 @@ impl BoardConfig for Board {
             led,
             #[cfg(feature = "terminal")]
             terminal,
+            #[cfg(feature = "esp-hosted")]
+            network: Network {
+                device,
+                control,
+                runner,
+            },
+            gyro_cs,
+            lcd_cs,
         }
     }
 

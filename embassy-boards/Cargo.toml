@@ -5,6 +5,8 @@ edition = "2024"
 
 [features]
 
+default = [ "rp", "stm32" ]
+
 # Build flag is used for inclusion in build-dependencies
 # for generating memory linker scripts in build.rs
 _build = []
@@ -15,67 +17,78 @@ _runtime = [
     "dep:panic-probe",
 ]
 
-_stm32 = []
-
-# Enabled on dual core targets (CM7)
-dual-core = []
-cpu0 = []
-cpu1 = []
-
 # Enabled if a heap allocator is present
 heap = []
 
-runtime-stm32 = [
-    "_stm32",
+stm32 = [
     "_runtime",
     "alloc",
     "dep:embassy-stm32",
     "dep:embedded-graphics",
+    "dep:stm32-fmc",
     "dep:cortex-m",
     "dep:cortex-m-rt",
+    "cortex-m/critical-section-single-core",
     "embassy-stm32/exti",
     "embassy-executor/platform-cortex-m"
 ]
 
-board-stm32h747i-disco = [ "_stm32" ]
+rp = [
+    "_runtime",
+    "dep:embassy-rp",
+    "dep:cortex-m",
+    "dep:cortex-m-rt",
+    "embassy-executor/platform-cortex-m",
+    "dep:cyw43",
+    "dep:cyw43-pio",
+    "dep:defmt-rtt",
+    "dep:embassy-net",
+    #"dep:edge-nal-embassy",
+    "embassy-net/defmt",
+    "defmt",
+    "led",
+    "embassy-rp/rp2040",
+]
+
+#board-stm32h747i-disco = [ "_stm32" ]
 
 # Primary CM7 core
 stm32h747i-disco-cm7 = [
-    "dual-core",
-    "cpu0",
-    "runtime-stm32",
+    #"dual-core",
+    #"cpu0",
+    #"runtime-stm32",
     "display",
     "touch",
     "terminal",
     "defmt",
     "heap",
-    "board-stm32h747i-disco",
+    #"board-stm32h747i-disco",
     "embassy-stm32/stm32h747xi-cm7",
     "embassy-stm32/time-driver-tim1"
 ]
 
 # Secondary CM4 core
 stm32h747i-disco-cm4 = [
-    "dual-core",
-    "cpu1",
-    "runtime-stm32",
-    "board-stm32h747i-disco",
+    #"dual-core",
+    #"cpu1",
+    #"runtime-stm32",
+    #"board-stm32h747i-disco",
     "embassy-stm32/stm32h747xi-cm4",
     "embassy-stm32/time-driver-tim2",
     "led",
     "pmod"
 ]
 
-board-stm32f429i-disco = [ "_stm32" ]
-stm32f429i-disco = [
-    "board-stm32f429i-disco",
-    "runtime-stm32",
+board-stm32f429i-disco = [
+    #"runtime-stm32",
     "display",
     "led",
     "defmt",
+    #"esp-hosted",
     "heap",
     "embassy-stm32/stm32f429zi",
-    "embassy-stm32/time-driver-tim1"
+    "embassy-stm32/time-driver-tim1",
+    "embassy-stm32/defmt",
 ]
 
 defmt = [
@@ -83,12 +96,11 @@ defmt = [
     "panic-probe/defmt",
     "panic-probe/print-defmt",
     "rtt-target/defmt",
-    "embassy-stm32/defmt",
     "embassy-executor/defmt",
-    "embassy-time/defmt"
+    "embassy-time/defmt",
+    #"embassy-net-esp-hosted/defmt"
 ]
 alloc = [ "dep:embedded-alloc" ]
-embedded-alloc = ["dep:embedded-alloc"]
 
 # Drivers
 led = []
@@ -98,22 +110,38 @@ terminal = [ "dep:embedded-graphics-unicodefonts", "dep:ratatui" ]
 crypto = []
 hash = []
 pmod = [ "dep:embedded-hal-bus" ]
+net = []
+
+esp-hosted = [ "net", "dep:embassy-net-esp-hosted", "dep:embedded-hal-bus", "dep:embassy-net", "dep:embassy-net-driver-channel" ]
 
 [dependencies]
-cortex-m = { version = "0.7.7", features = ["inline-asm", "critical-section-single-core"], optional = true }
+embassy-boards-core.path = "../embassy-boards-core"
+cortex-m = { version = "0.7.7", features = ["inline-asm"], optional = true }
 cortex-m-rt = { version = "0.7.5", optional = true }
 static_cell = "2.1"
 panic-probe = { version = "1.0.0", default-features = false, optional = true }
 defmt = { version = "1.0.1", optional = true }
 rtt-target = { version = "0.6.2", default-features = false, optional = true }
+defmt-rtt = { version = "1.1.0", optional = true }
 embassy-stm32 = { path = "../../embassy/embassy-stm32", optional = true }
+embassy-rp = { path = "../../embassy/embassy-rp", features = ["defmt", "unstable-pac", "time-driver", "critical-section-impl"], optional = true }
 embassy-executor = { path = "../../embassy/embassy-executor", features = ["executor-thread", "executor-interrupt"], optional = true }
 embassy-time = { path = "../../embassy/embassy-time" }
 embassy-sync = { path = "../../embassy/embassy-sync" }
-stm32-fmc = "0.4.0"
+stm32-fmc = { version = "0.4.0", optional = true }
 embedded-hal-async = "1.0.0"
 embedded-hal = "1.0.0"
 embedded-hal-bus = { version = "0.3.0", features = ["async"], optional = true }
+portable-atomic = { version = "1.13.1", features = ["critical-section"] }
+
+# Networking
+embassy-net-esp-hosted = { path = "../../embassy/embassy-net-esp-hosted", optional = true }
+embassy-net = { path = "../../embassy/embassy-net", features = ["proto-ipv4", "udp", "tcp", "dns", "dhcpv4"], optional = true }
+embassy-net-driver-channel = { path = "../../embassy/embassy-net-driver-channel", optional = true }
+
+# Wifi
+cyw43 = { version = "0.7.0", path = "../../embassy/cyw43", optional = true }
+cyw43-pio = { version = "0.10.0", path = "../../embassy/cyw43-pio", optional = true }
 
 # Graphics crates
 embedded-alloc = { version = "0.7.0", optional = true }
@@ -121,10 +149,12 @@ embedded-graphics = { version = "0.8.2", optional = true}
 ratatui = { version = "0.30", default-features = false, features = ["portable-atomic", "async-backend"], optional = true }
 embedded-graphics-unicodefonts = { version = "0.2.0", optional = true }
 hashbrown = { version = "0.16.1", default-features = false }
-tracing = { version = "0.1.44", default-features = false }
+tracing = { version = "0.1.44", default-features = false, optional = true }
+#edge-nal-embassy = { version = "0.8.1", optional = true }
+
 
 [build-dependencies]
-embassy-boards-config.path = "../embassy-boards-config"
+embassy-boards-config = { path = "../embassy-boards-config" }
 
 [patch.crates-io]
 ratatui.path = "../../ratatui/ratatui"

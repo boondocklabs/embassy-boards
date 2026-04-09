@@ -1,52 +1,58 @@
-#![cfg_attr(feature = "_runtime", no_std)]
+//#![cfg_attr(feature = "_runtime", no_std)]
+#![no_std]
+#![allow(unexpected_cfgs)]
 
-use crate::memory::BoardMemory;
-
-#[cfg(feature = "_stm32")]
-pub mod bsp {
-    mod stm32;
-    #[cfg(not(feature = "_build"))]
-    pub use stm32::BSP;
-    pub use stm32::Board;
+mod memory {
+    include!(concat!(env!("OUT_DIR"), "/memory.rs"));
 }
 
-#[cfg(feature = "_runtime")]
+/// Memory struct which implements [`BoardMemory`] generated from embassy-boards-config in build.rs
+pub struct Memory {}
+
+pub struct Board {}
+
+#[cfg(platform = "stm32")]
+pub mod bsp {
+    mod stm32;
+}
+
+#[cfg(platform = "rp")]
+pub mod bsp {
+    mod rp;
+}
+
+use embassy_boards_core::memory::BoardMemory;
 pub use embassy_executor;
 
-#[cfg(feature = "_runtime")]
 pub use cortex_m;
-
-#[cfg(feature = "_runtime")]
 pub use cortex_m_rt;
 
-#[cfg(feature = "_runtime")]
 pub use embassy_time;
 
-#[cfg(feature = "_runtime")]
 pub use embassy_sync;
 
-#[cfg(all(feature = "_runtime", feature = "_stm32"))]
+#[cfg(platform = "stm32")]
 pub use embassy_stm32;
 
-#[cfg(feature = "_runtime")]
+#[cfg(platform = "rp")]
+pub use embassy_rp;
+
 pub mod drivers;
 
-#[cfg(all(feature = "_runtime", feature = "display"))]
+#[cfg(all(feature = "display"))]
 pub use embedded_graphics;
 
-#[cfg(all(feature = "_runtime", feature = "pmod"))]
+#[cfg(all(feature = "pmod"))]
 pub use embedded_hal_bus;
 
-#[cfg(all(feature = "_runtime", feature = "terminal"))]
+#[cfg(all(feature = "terminal"))]
 pub use ratatui;
 
-#[cfg(all(feature = "_runtime", feature = "defmt"))]
+#[cfg(all(feature = "defmt"))]
 pub use defmt;
 
-#[cfg(all(feature = "_runtime", feature = "display"))]
+#[cfg(all(feature = "display"))]
 pub mod display;
-
-pub mod memory;
 
 /// Board Support Trait
 #[allow(async_fn_in_trait)]
@@ -78,29 +84,4 @@ pub trait BoardConfig {
     #[cfg(feature = "heap")]
     /// Return the total heap memory size
     fn heap_size() -> usize;
-}
-
-/// Align to next highest alignment boundary
-const fn align_up(x: usize, align: usize) -> usize {
-    debug_assert!(align.is_power_of_two());
-    (x + (align - 1)) & !(align - 1)
-}
-
-pub const fn str_eq(a: &str, b: &str) -> bool {
-    let a = a.as_bytes();
-    let b = b.as_bytes();
-
-    if a.len() != b.len() {
-        return false;
-    }
-
-    let mut i = 0;
-    while i < a.len() {
-        if a[i] != b[i] {
-            return false;
-        }
-        i += 1;
-    }
-
-    true
 }

@@ -1,0 +1,25 @@
+[package]
+name = "esp-hosted"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = [ "terminal" ]
+terminal = [ "embassy-boards/terminal" ]
+
+[dependencies]
+embassy-boards = { path = "../../embassy-boards", default-features = false, features = ["stm32f429i-disco", "defmt"] }
+defmt = "1.0.1"
+embassy-executor = { path = "../../../embassy/embassy-executor" }
+
+
+[build-dependencies]
+embassy-boards = { path = "../../embassy-boards", default-features = false, features = ["board-stm32f429i-disco", "_build"] }
+
+[patch.crates-io]
+ratatui.path = "../../../ratatui/ratatui"
+ratatui-core.path = "../../../ratatui/ratatui-core"
+ratatui-widgets.path = "../../../ratatui/ratatui-widgets"
+
+[profile.release]
+debug = 2

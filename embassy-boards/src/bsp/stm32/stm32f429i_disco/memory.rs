@@ -1,4 +1,4 @@
-use crate::memory::{
+use embassy_boards_config::memory::{
     BoardMemory, MemoryAlias, MemoryLayout,
     region::{MemoryRegionSpec, RegionKind},
     section::MemorySectionSpec,
@@ -65,11 +65,11 @@ const REGIONS: &[MemoryRegionSpec] = &[
 ];
 
 impl BoardMemory for super::Memory {
-    const MEMORY: crate::memory::MemoryLayout = MemoryLayout {
+    const MEMORY: MemoryLayout = MemoryLayout {
         regions: REGIONS,
         aliases: &[MemoryAlias {
             name: "RAM",
-            target: "CCM",
+            target: "SRAM",
         }],
     };
 }

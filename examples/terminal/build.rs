@@ -3,11 +3,9 @@ pub fn main() {
 
     println!("cargo:rustc-link-arg-bins=--nmagic");
     println!("cargo:rustc-link-arg-bins=-Tlink.x");
-    if let Ok(board_id) = std::env::var("EMBASSY_BOARD") {
-        if board_id.starts_with("rp-") {
-            println!("cargo:warning=Adding link-rp.x");
-            println!("cargo:rustc-link-arg-bins=-Tlink-rp.x");
-        }
+    if let Ok(_) = std::env::var("CARGO_RUNTIME_RP") {
+        println!("cargo:warning=Adding link-rp.x");
+        println!("cargo:rustc-link-arg-bins=-Tlink-rp.x");
     }
     println!("cargo:rustc-link-arg-bins=-Tdefmt.x");
 }

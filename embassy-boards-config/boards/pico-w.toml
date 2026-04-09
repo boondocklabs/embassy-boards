@@ -1,0 +1,44 @@
+id = "rp-pico-w"
+name = "RPi Pico W"
+vendor = "Raspberry Pi"
+platform = "rp"
+chip = "RP2040"
+target = "thumbv6m-none-eabi"
+
+features = ["rp"]
+
+
+[memory]
+aliases = []
+[[memory.regions]]
+name = "BOOT2"
+origin = "0x1000_0000"
+length = "256B"
+kind = "reserved"
+
+  #[[memory.regions.sections]]
+  #name = "boot2"
+  #length = "256B"
+
+[[memory.regions]]
+name = "FLASH"
+origin = "0x1000_0100"
+length = "1MiB - 256B"
+kind = "flash"
+
+[[memory.regions]]
+name = "FLASH_FIRMWARE"
+origin = "0x1010_0000"
+length = "1MiB"
+kind = "flash"
+
+[[memory.regions.sections]]
+name = "firmware"
+origin = "0x1010_0000"
+length = "1MiB"
+
+[[memory.regions]]
+name = "RAM"
+origin = "0x2000_0000"
+length = "264KiB"
+kind = "ram"

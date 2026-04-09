@@ -1,25 +1,21 @@
 [package]
-name = "primary"
+name = "blinky"
 version = "0.1.0"
 edition = "2024"
 
+# Platform features
 [features]
-default = [ "terminal" ]
-terminal = [ "embassy-boards/terminal" ]
+rp = [ "embassy-boards/rp" ]
+stm32 = [ "embassy-boards/stm32" ]
 
 [dependencies]
-embassy-boards = { path = "../../embassy-boards", default-features = false, features = ["stm32f429i-disco", "defmt"] }
+embassy-boards = { path = "../../embassy-boards", default-features = false }
 defmt = "1.0.1"
 embassy-executor = { path = "../../../embassy/embassy-executor" }
 
-
-[build-dependencies]
-embassy-boards = { path = "../../embassy-boards", default-features = false, features = ["board-stm32f429i-disco", "_build"] }
-
-[patch.crates-io]
-ratatui.path = "../../../ratatui/ratatui"
-ratatui-core.path = "../../../ratatui/ratatui-core"
-ratatui-widgets.path = "../../../ratatui/ratatui-widgets"
-
 [profile.release]
-debug = 2
+lto = true
+opt-level = "s"
+incremental = false
+codegen-units = 1
+debug = true

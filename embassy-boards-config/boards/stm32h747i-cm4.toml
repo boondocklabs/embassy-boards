@@ -1,2 +1,32 @@
+id = "stm32h747i-disco-cm4"
 name = "STM32H747I-DISCO CM4"
 vendor = "ST"
+platform = "stm32"
+chip = "STM32H747XI"
+target = "thumbv7em-none-eabihf"
+features = []
+
+[memory]
+[[regions]]
+name = "BOOT2"
+origin = "0x1000_0000"
+length = "256B"
+kind = "reserved"
+
+  [[regions.sections]]
+  name = "boot2"
+  length = "256B"
+
+[[regions]]
+name = "FLASH"
+origin = "0x1000_0100"
+length = "2MiB - 256B"
+kind = "flash"
+
+[[regions]]
+name = "RAM"
+origin = "0x2000_0000"
+length = "256KiB"
+kind = "ram"
+
+aliases = []

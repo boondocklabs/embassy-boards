@@ -1,36 +1,37 @@
 //! LED Driver
 
-use embassy_stm32::gpio::{Level, Output};
+use embedded_hal::digital::{PinState, StatefulOutputPin};
 
-pub struct Led<const N: usize, const INVERTED: bool = true> {
-    pub(crate) pins: [Output<'static>; N],
+//use embassy_stm32::gpio::{Level, Output};
+
+pub struct Led<T: StatefulOutputPin, const N: usize, const INVERTED: bool = true> {
+    pub(crate) pins: [T; N],
 }
 
-impl<const N: usize, const INVERTED: bool> Led<N, INVERTED> {
-    pub fn set(&mut self, index: usize, level: Level) {
+impl<T: StatefulOutputPin, const N: usize, const INVERTED: bool> Led<T, N, INVERTED> {
+    pub fn set(&mut self, index: usize, level: bool) {
         if index < N {
-            let level = if INVERTED {
-                match level {
-                    Level::Low => Level::High,
-                    Level::High => Level::Low,
-                }
-            } else {
-                level
+            let level = if INVERTED { !level } else { level };
+
+            let state = match level {
+                true => PinState::Low,
+                false => PinState::High,
             };
-            self.pins[index].set_level(level);
+
+            self.pins[index].set_state(state).ok();
         }
     }
 
     pub fn toggle(&mut self, index: usize) {
         if index < N {
-            self.pins[index].toggle();
+            self.pins[index].toggle().ok();
         }
     }
 
     pub fn mask(&mut self, mask: u32) {
         for i in 0..N {
-            let level = Level::from((mask >> i) & 1 != 0);
-            self.set(i, level);
+            let state = PinState::from((mask >> i) & 1 != 0);
+            self.pins[i].set_state(state).ok();
         }
     }
 }
